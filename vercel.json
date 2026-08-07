@@ -1,0 +1,19 @@
+{
+  "installCommand": "cd myproject/frontend && npm ci",
+  "buildCommand": "cd myproject/frontend && npm run build",
+  "outputDirectory": "myproject/frontend/dist",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/admin/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
