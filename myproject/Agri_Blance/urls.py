@@ -1,0 +1,41 @@
+from django.urls import path
+
+from .views import (
+    AdminAnalyticsView,
+    CropBalancingView,
+    CurrentWeatherView,
+    DistrictComparisonView,
+    DistrictHeatmapView,
+    ForecastView,
+    FarmerAssistantView,
+    GovernmentDashboardView,
+    HealthView,
+    MarketIntelligenceView,
+    MarketPricesView,
+    NasaImageryView,
+    ProfitCalculatorView,
+    SatelliteAnalyticsView,
+    SoilProfileView,
+    SmartNotificationsView,
+    YieldPredictionView,
+)
+
+urlpatterns = [
+    path("health/", HealthView.as_view(), name="health"),
+    path("weather/current/", CurrentWeatherView.as_view(), name="weather-current"),
+    path("weather/forecast/", ForecastView.as_view(), name="weather-forecast"),
+    path("earth/imagery/", NasaImageryView.as_view(), name="nasa-imagery"),
+    path("soil/profile/", SoilProfileView.as_view(), name="soil-profile"),
+    path("market/prices/", MarketPricesView.as_view(), name="market-prices"),
+    path("ai/yield-prediction/", YieldPredictionView.as_view(), name="yield-prediction"),
+    path("ai/crop-balancing/", CropBalancingView.as_view(), name="crop-balancing"),
+    path("districts/heatmap/", DistrictHeatmapView.as_view(), name="district-heatmap"),
+    path("districts/compare/", DistrictComparisonView.as_view(), name="district-compare"),
+    path("market/intelligence/", MarketIntelligenceView.as_view(), name="market-intelligence"),
+    path("ai/farmer-assistant/", FarmerAssistantView.as_view(), name="farmer-assistant"),
+    path("notifications/smart/", SmartNotificationsView.as_view(), name="smart-notifications"),
+    path("profit/calculator/", ProfitCalculatorView.as_view(), name="profit-calculator"),
+    path("earth/satellite-analytics/", SatelliteAnalyticsView.as_view(), name="satellite-analytics"),
+    path("analytics/admin/", AdminAnalyticsView.as_view(), name="admin-analytics"),
+    path("dashboard/government/", GovernmentDashboardView.as_view(), name="government-dashboard"),
+]
