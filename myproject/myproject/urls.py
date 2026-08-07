@@ -18,9 +18,14 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from .frontend_views import frontend_asset, frontend_index
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('Agri_Blance.urls')),
     path('api/auth/', include('accounts.urls')),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('assets/<path:asset_path>', frontend_asset, name='frontend-asset'),
+    path('', frontend_index, name='frontend-index'),
+    path('<path:spa_path>', frontend_index, name='frontend-spa'),
 ]
