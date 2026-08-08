@@ -9,6 +9,10 @@ FRONTEND_DIST = Path(settings.BASE_DIR) / "frontend" / "dist"
 
 
 def frontend_index(request, spa_path=""):
+    rewritten_path = request.GET.get("path", "")
+    if rewritten_path.startswith("assets/"):
+        return frontend_asset(request, rewritten_path.removeprefix("assets/"))
+
     index_file = FRONTEND_DIST / "index.html"
     if not index_file.exists():
         raise Http404("Frontend build not found")
