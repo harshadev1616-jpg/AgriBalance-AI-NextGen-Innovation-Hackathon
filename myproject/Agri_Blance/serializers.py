@@ -78,15 +78,7 @@ class FarmerAssistantSerializer(serializers.Serializer):
 
 class ProfitCalculatorSerializer(serializers.Serializer):
     district = serializers.CharField(default="Mandya", max_length=80)
-    crop = serializers.CharField(required=False, max_length=80)
     farm_size = serializers.FloatField(min_value=0.1)
     budget = serializers.FloatField(min_value=0)
     soil = serializers.CharField(default="Loamy", max_length=80)
     water = serializers.FloatField(min_value=0, max_value=100)
-    yield_per_hectare = serializers.FloatField(required=False, min_value=0)
-    selling_price = serializers.FloatField(required=False, min_value=0)
-    seed_cost = serializers.FloatField(default=0, min_value=0)
-    fertilizer_cost = serializers.FloatField(default=0, min_value=0)
-    labor_cost = serializers.FloatField(default=0, min_value=0)
-    irrigation_cost = serializers.FloatField(default=0, min_value=0)
-    other_cost = serializers.FloatField(default=0, min_value=0)
