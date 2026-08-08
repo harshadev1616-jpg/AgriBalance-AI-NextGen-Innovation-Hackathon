@@ -37,6 +37,18 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarEleme
 
 const districts = ["Mandya", "Mysuru", "Belagavi", "Tumakuru", "Raichur", "Dharwad", "Bengaluru Urban"];
 const crops = ["Rice", "Ragi", "Jowar", "Maize", "Tur Dal", "Groundnut", "Cotton", "Sugarcane", "Tomato", "Millets"];
+const cropDefaults = {
+  Rice: { yieldPerHa: 48, sellingPrice: 2400, costs: { seed: 9000, fertilizer: 17000, labor: 24000, irrigation: 8000, other: 4000 } },
+  Ragi: { yieldPerHa: 21, sellingPrice: 4300, costs: { seed: 5000, fertilizer: 9000, labor: 14000, irrigation: 2500, other: 2500 } },
+  Jowar: { yieldPerHa: 19, sellingPrice: 3900, costs: { seed: 5000, fertilizer: 8000, labor: 13000, irrigation: 2000, other: 2000 } },
+  Maize: { yieldPerHa: 46, sellingPrice: 2250, costs: { seed: 8000, fertilizer: 14000, labor: 18000, irrigation: 4000, other: 3000 } },
+  "Tur Dal": { yieldPerHa: 12, sellingPrice: 7200, costs: { seed: 6000, fertilizer: 9000, labor: 16000, irrigation: 2500, other: 2500 } },
+  Groundnut: { yieldPerHa: 18, sellingPrice: 6100, costs: { seed: 10000, fertilizer: 11000, labor: 18000, irrigation: 3000, other: 2000 } },
+  Cotton: { yieldPerHa: 16, sellingPrice: 6900, costs: { seed: 12000, fertilizer: 17000, labor: 24000, irrigation: 3000, other: 3000 } },
+  Sugarcane: { yieldPerHa: 820, sellingPrice: 340, costs: { seed: 22000, fertilizer: 29000, labor: 43000, irrigation: 14000, other: 7000 } },
+  Tomato: { yieldPerHa: 250, sellingPrice: 1150, costs: { seed: 12000, fertilizer: 18000, labor: 25000, irrigation: 10000, other: 6000 } },
+  Millets: { yieldPerHa: 18, sellingPrice: 5600, costs: { seed: 5000, fertilizer: 8000, labor: 14000, irrigation: 1500, other: 2500 } },
+};
 
 const chartOptions = {
   responsive: true,
@@ -53,6 +65,34 @@ const chartOptions = {
 
 function currency(value) {
   return `Rs ${Number(value || 0).toLocaleString("en-IN")}`;
+}
+
+function numberValue(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function calculateProfit({ farmSize, yieldPerHa, sellingPrice, seedCost, fertilizerCost, laborCost, irrigationCost, otherCost, water }) {
+  const totalYield = numberValue(farmSize) * numberValue(yieldPerHa);
+  const revenue = totalYield * numberValue(sellingPrice);
+  const totalCost =
+    numberValue(seedCost) +
+    numberValue(fertilizerCost) +
+    numberValue(laborCost) +
+    numberValue(irrigationCost) +
+    numberValue(otherCost);
+  const netProfit = revenue - totalCost;
+  const roi = totalCost ? (netProfit / totalCost) * 100 : 0;
+  const waterValue = numberValue(water);
+
+  return {
+    totalYield,
+    budget: totalCost,
+    revenue,
+    netProfit,
+    roi,
+    risk: waterValue < 35 ? "High" : waterValue < 55 ? "Moderate" : "Low",
+  };
 }
 
 function Panel({ children, className = "" }) {
@@ -97,8 +137,10 @@ export default function App() {
   const [district, setDistrict] = useState("Mandya");
   const [crop, setCrop] = useState("Tomato");
   const [farmSize, setFarmSize] = useState(2);
-  const [budget, setBudget] = useState(180000);
   const [water, setWater] = useState(62);
+  const [yieldPerHa, setYieldPerHa] = useState(cropDefaults.Tomato.yieldPerHa);
+  const [sellingPrice, setSellingPrice] = useState(cropDefaults.Tomato.sellingPrice);
+  const [costs, setCosts] = useState(cropDefaults.Tomato.costs);
   const [question, setQuestion] = useState("Is tomato risky?");
   const [selected, setSelected] = useState({ lat: 12.9716, lon: 77.5946 });
   const [state, setState] = useState({
@@ -118,24 +160,30 @@ export default function App() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const defaults = cropDefaults[crop];
+    setYieldPerHa(defaults.yieldPerHa);
+    setSellingPrice(defaults.sellingPrice);
+    setCosts(defaults.costs);
+  }, [crop]);
+
+  useEffect(() => {
     let active = true;
     async function loadPhaseTwo() {
       setLoading(true);
       setError("");
       try {
-        const [balancing, heatmap, comparison, market, notifications, profit, satellite, admin, government] = await Promise.all([
+        const [balancing, heatmap, comparison, market, notifications, satellite, admin, government] = await Promise.all([
           api.cropBalancing({ district, water_availability: water }),
           api.districtHeatmap(),
           api.compareDistricts(["Mandya", "Mysuru", "Belagavi", "Tumakuru"]),
           api.marketIntelligence(district, crop),
           api.smartNotifications(district),
-          api.profitCalculator({ district, farm_size: farmSize, budget, soil: "Loamy", water }),
           api.satelliteAnalytics(district),
           api.adminAnalytics(),
           api.governmentDashboard(),
         ]);
         if (active) {
-          setState((current) => ({ ...current, balancing, heatmap, comparison, market, notifications, profit, satellite, admin, government }));
+          setState((current) => ({ ...current, balancing, heatmap, comparison, market, notifications, satellite, admin, government }));
         }
       } catch (err) {
         if (active) setError(err.message);
@@ -147,7 +195,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [district, crop, farmSize, budget, water]);
+  }, [district, crop, water]);
 
   async function askAssistant(event) {
     event.preventDefault();
@@ -166,6 +214,29 @@ export default function App() {
   const heatmap = state.heatmap?.districts || [];
   const comparison = state.comparison?.districts || [];
   const bestCrop = topCrops[0];
+  const profit = useMemo(
+    () =>
+      calculateProfit({
+        farmSize,
+        yieldPerHa,
+        sellingPrice,
+        seedCost: costs.seed,
+        fertilizerCost: costs.fertilizer,
+        laborCost: costs.labor,
+        irrigationCost: costs.irrigation,
+        otherCost: costs.other,
+        water,
+      }),
+    [farmSize, yieldPerHa, sellingPrice, costs, water],
+  );
+  const profitScore = Math.max(0, Math.min(100, Math.round((profit.netProfit + 45000) / 1450)));
+  const comparisonWithCalculatorProfit = comparison.map((item) =>
+    item.district === district ? { ...item, profit: Math.round(profit.netProfit) } : item,
+  );
+
+  function updateCost(name, value) {
+    setCosts((current) => ({ ...current, [name]: numberValue(value) }));
+  }
 
   const marketChart = useMemo(
     () => ({
@@ -185,14 +256,14 @@ export default function App() {
 
   const comparisonChart = useMemo(
     () => ({
-      labels: comparison.map((item) => item.district),
+      labels: comparisonWithCalculatorProfit.map((item) => item.district),
       datasets: [
-        { label: "Profit", data: comparison.map((item) => item.profit), backgroundColor: "#34d399" },
-        { label: "Demand", data: comparison.map((item) => item.demand * 1000), backgroundColor: "#f59e0b" },
-        { label: "Supply risk", data: comparison.map((item) => item.supply * 1000), backgroundColor: "#fb7185" },
+        { label: "Profit", data: comparisonWithCalculatorProfit.map((item) => item.profit), backgroundColor: "#34d399" },
+        { label: "Demand", data: comparisonWithCalculatorProfit.map((item) => item.demand * 1000), backgroundColor: "#f59e0b" },
+        { label: "Supply risk", data: comparisonWithCalculatorProfit.map((item) => item.supply * 1000), backgroundColor: "#fb7185" },
       ],
     }),
-    [comparison],
+    [comparisonWithCalculatorProfit],
   );
 
   return (
@@ -220,8 +291,8 @@ export default function App() {
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat title="Best crop" value={bestCrop?.crop} icon={Leaf} />
-          <Stat title="Expected profit" value={bestCrop ? currency(bestCrop.expected_profit) : "--"} icon={Wallet} tone="text-amber-300" />
-          <Stat title="Profit score" value={bestCrop ? `${bestCrop.profit_score}/100` : "--"} icon={Gauge} tone="text-sky-300" />
+          <Stat title="Expected profit" value={currency(profit.netProfit)} icon={Wallet} tone="text-amber-300" />
+          <Stat title="Profit score" value={`${profitScore}/100`} icon={Gauge} tone="text-sky-300" />
           <Stat title="Oversupply risk" value={bestCrop ? `${bestCrop.oversupply_risk}%` : "--"} icon={AlertTriangle} tone="text-rose-300" />
         </section>
 
@@ -342,17 +413,48 @@ export default function App() {
             </div>
             <div className="mt-4 grid gap-3">
               <label className="text-sm text-slate-300">Farm size: {farmSize} ha</label>
-              <input type="range" min="0.5" max="10" step="0.5" value={farmSize} onChange={(event) => setFarmSize(Number(event.target.value))} />
-              <label className="text-sm text-slate-300">Budget: {currency(budget)}</label>
-              <input type="range" min="50000" max="800000" step="10000" value={budget} onChange={(event) => setBudget(Number(event.target.value))} />
+              <input type="range" min="0.5" max="10" step="0.5" value={farmSize} onChange={(event) => setFarmSize(numberValue(event.target.value))} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-sm text-slate-300">
+                  Yield / ha
+                  <input className="mt-1 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" type="number" min="0" step="0.01" value={yieldPerHa} onChange={(event) => setYieldPerHa(numberValue(event.target.value))} />
+                </label>
+                <label className="text-sm text-slate-300">
+                  Selling price
+                  <input className="mt-1 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" type="number" min="0" step="0.01" value={sellingPrice} onChange={(event) => setSellingPrice(numberValue(event.target.value))} />
+                </label>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-sm text-slate-300">
+                  Seed cost
+                  <input className="mt-1 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" type="number" min="0" value={costs.seed} onChange={(event) => updateCost("seed", event.target.value)} />
+                </label>
+                <label className="text-sm text-slate-300">
+                  Fertilizer cost
+                  <input className="mt-1 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" type="number" min="0" value={costs.fertilizer} onChange={(event) => updateCost("fertilizer", event.target.value)} />
+                </label>
+                <label className="text-sm text-slate-300">
+                  Labor cost
+                  <input className="mt-1 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" type="number" min="0" value={costs.labor} onChange={(event) => updateCost("labor", event.target.value)} />
+                </label>
+                <label className="text-sm text-slate-300">
+                  Irrigation cost
+                  <input className="mt-1 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" type="number" min="0" value={costs.irrigation} onChange={(event) => updateCost("irrigation", event.target.value)} />
+                </label>
+                <label className="text-sm text-slate-300 sm:col-span-2">
+                  Other cost
+                  <input className="mt-1 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" type="number" min="0" value={costs.other} onChange={(event) => updateCost("other", event.target.value)} />
+                </label>
+              </div>
+              <label className="text-sm text-slate-300">Budget: {currency(profit.budget)}</label>
               <label className="text-sm text-slate-300">Water: {water}/100</label>
-              <input type="range" min="10" max="100" value={water} onChange={(event) => setWater(Number(event.target.value))} />
+              <input type="range" min="10" max="100" value={water} onChange={(event) => setWater(numberValue(event.target.value))} />
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-md bg-white/10 p-3">Revenue<br /><strong>{currency(state.profit?.revenue)}</strong></div>
-              <div className="rounded-md bg-white/10 p-3">Net profit<br /><strong>{currency(state.profit?.net_profit)}</strong></div>
-              <div className="rounded-md bg-white/10 p-3">ROI<br /><strong>{state.profit?.roi ?? "--"}%</strong></div>
-              <div className="rounded-md bg-white/10 p-3">Risk<br /><strong>{state.profit?.risk ?? "--"}</strong></div>
+              <div className="rounded-md bg-white/10 p-3">Revenue<br /><strong>{currency(profit.revenue)}</strong></div>
+              <div className="rounded-md bg-white/10 p-3">Net profit<br /><strong>{currency(profit.netProfit)}</strong></div>
+              <div className="rounded-md bg-white/10 p-3">ROI<br /><strong>{profit.roi.toFixed(2)}%</strong></div>
+              <div className="rounded-md bg-white/10 p-3">Risk<br /><strong>{profit.risk}</strong></div>
             </div>
           </Panel>
 
