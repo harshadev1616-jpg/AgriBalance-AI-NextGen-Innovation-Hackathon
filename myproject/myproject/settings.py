@@ -31,7 +31,16 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-in-production")
 
 DEBUG = env_bool("DJANGO_DEBUG", True)
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.vercel.app")
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+ALLOWED_HOSTS.extend(
+    host
+    for host in [
+        ".vercel.app",
+        os.getenv("VERCEL_URL"),
+        os.getenv("VERCEL_PROJECT_PRODUCTION_URL"),
+    ]
+    if host and host not in ALLOWED_HOSTS
+)
 CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",
     "http://localhost:5173,http://127.0.0.1:5173",
