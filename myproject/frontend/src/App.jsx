@@ -229,6 +229,25 @@ export default function App() {
       }),
     [farmSize, yieldPerHa, sellingPrice, costs, water],
   );
+  useEffect(() => {
+    console.log("CALCULATOR INPUTS", {
+      farmSize,
+      yieldPerHa,
+      sellingPrice,
+      seedCost: costs.seed,
+      fertilizerCost: costs.fertilizer,
+      laborCost: costs.labor,
+      irrigationCost: costs.irrigation,
+      otherCost: costs.other,
+    });
+    console.log("CALCULATED RESULT", {
+      totalYield: profit.totalYield,
+      revenue: profit.revenue,
+      totalCost: profit.budget,
+      netProfit: profit.netProfit,
+      roi: profit.roi,
+    });
+  }, [farmSize, yieldPerHa, sellingPrice, costs, profit]);
   const profitScore = Math.max(0, Math.min(100, Math.round((profit.netProfit + 45000) / 1450)));
   const comparisonWithCalculatorProfit = comparison.map((item) =>
     item.district === district ? { ...item, profit: Math.round(profit.netProfit) } : item,

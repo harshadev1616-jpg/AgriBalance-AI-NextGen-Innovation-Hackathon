@@ -74,3 +74,27 @@ class ProfitCalculatorTests(TestCase):
         self.assertEqual(result_at_3["total_yield"], 750)
         self.assertEqual(result_at_3["revenue"], 1125000)
         self.assertEqual(result_at_3["net_profit"], 1054000)
+
+    def test_profit_reacts_to_yield_per_hectare_change(self):
+        engine = AgricultureIntelligenceEngine()
+        payload = {
+            "district": "Mandya",
+            "crop": "Tomato",
+            "farm_size": 3,
+            "soil": "Loamy",
+            "water": 62,
+            "selling_price": 1500,
+            "seed_cost": 12000,
+            "fertilizer_cost": 18000,
+            "labor_cost": 25000,
+            "irrigation_cost": 10000,
+            "other_cost": 6000,
+        }
+
+        result_at_250 = engine.profit_calculator(**payload, yield_per_hectare=250)
+        result_at_300 = engine.profit_calculator(**payload, yield_per_hectare=300)
+
+        self.assertEqual(result_at_250["revenue"], 1125000)
+        self.assertEqual(result_at_300["total_yield"], 900)
+        self.assertEqual(result_at_300["revenue"], 1350000)
+        self.assertEqual(result_at_300["net_profit"], 1279000)
