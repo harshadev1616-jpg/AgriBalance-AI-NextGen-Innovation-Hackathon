@@ -188,22 +188,56 @@ class AgricultureIntelligenceEngine:
         ]
         return {"district": district, "alerts": [alert for alert in alerts if alert["active"]]}
 
-    def profit_calculator(self, district, farm_size, budget, soil, water):
-        best = self.crop_balancing(district, {"water_availability": water})["top_recommended_crops"][0]
-        revenue = round((best["expected_yield"] * CROP_PROFILES[best["crop"]]["price"]) * farm_size)
-        expenses = min(round(CROP_PROFILES[best["crop"]]["cost"] * farm_size), round(budget))
+    def profit_calculator(
+        self,
+        district,
+        farm_size,
+        budget,
+        soil,
+        water,
+        crop=None,
+        yield_per_hectare=None,
+        selling_price=None,
+        seed_cost=0,
+        fertilizer_cost=0,
+        labor_cost=0,
+        irrigation_cost=0,
+        other_cost=0,
+    ):
+        balancing = self.crop_balancing(district, {"water_availability": water})
+        best = balancing["top_recommended_crops"][0]
+        selected_crop = crop if crop in CROP_PROFILES else best["crop"]
+        profile = CROP_PROFILES[selected_crop]
+        selected_score = self._score_crop(selected_crop, profile, self._district_baseline(district), {"water_availability": water})
+        area = float(farm_size)
+        crop_yield = float(yield_per_hectare if yield_per_hectare is not None else profile["yield"]) * area
+        price = float(selling_price if selling_price is not None else profile["price"])
+        costs = {
+            "seed_cost": float(seed_cost or 0),
+            "fertilizer_cost": float(fertilizer_cost or 0),
+            "labor_cost": float(labor_cost or 0),
+            "irrigation_cost": float(irrigation_cost or 0),
+            "other_cost": float(other_cost or 0),
+        }
+        cost_total = sum(costs.values())
+        expenses = round(cost_total if cost_total else profile["cost"] * area)
+        revenue = round(crop_yield * price)
         net_profit = revenue - expenses
         return {
             "district": district,
-            "recommended_crop": best["crop"],
-            "farm_size": farm_size,
+            "recommended_crop": selected_crop,
+            "farm_size": area,
             "soil": soil,
             "water": water,
+            "yield_per_hectare": round(crop_yield / area, 2) if area else 0,
+            "total_yield": round(crop_yield, 2),
+            "selling_price": price,
+            "costs": costs,
             "revenue": revenue,
             "expenses": expenses,
             "net_profit": net_profit,
             "roi": round((net_profit / expenses) * 100, 2) if expenses else 0,
-            "risk": "High" if best["climate_risk"] > 65 or best["oversupply_risk"] > 70 else "Moderate" if best["climate_risk"] > 45 else "Low",
+            "risk": "High" if selected_score.climate_risk > 65 or selected_score.oversupply_risk > 70 else "Moderate" if selected_score.climate_risk > 45 else "Low",
         }
 
     def satellite_analytics(self, district):
